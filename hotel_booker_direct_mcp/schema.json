@@ -1,0 +1,85 @@
+{
+  "tools": [
+    {
+      "name": "get_available_hotels",
+      "description": "Retrieve a list of available hotels, optionally filtered by location.\n\nArgs:\n location: Optional city or location name to filter hotels (e.g., \"New York\", \"Chicago\").\n\nReturns:\n A list of dictionaries containing hotel details: id, name, location, available_rooms, price_per_night.\n",
+      "inputSchema": {
+        "properties": {
+          "location": {
+            "default": null,
+            "title": "Location",
+            "type": "string"
+          }
+        },
+        "title": "get_available_hotelsArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "book_room",
+      "description": "Book a room (or multiple rooms) in a specified hotel.\n\nArgs:\n hotel_id: The unique ID of the hotel to book.\n guest_name: The full name of the guest making the booking.\n check_in_date: The check-in date in YYYY-MM-DD format (e.g., \"2025-08-10\").\n check_out_date: The check-out date in YYYY-MM-DD format (e.g., \"2025-08-15\").\n num_rooms: The number of rooms to book.\n\nReturns:\n A dictionary containing the booking status and the generated custom booking ID.\n",
+      "inputSchema": {
+        "properties": {
+          "hotel_id": {
+            "title": "Hotel Id",
+            "type": "integer"
+          },
+          "guest_name": {
+            "title": "Guest Name",
+            "type": "string"
+          },
+          "check_in_date": {
+            "title": "Check In Date",
+            "type": "string"
+          },
+          "check_out_date": {
+            "title": "Check Out Date",
+            "type": "string"
+          },
+          "num_rooms": {
+            "title": "Num Rooms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hotel_id",
+          "guest_name",
+          "check_in_date",
+          "check_out_date",
+          "num_rooms"
+        ],
+        "title": "book_roomArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "get_booking_details",
+      "description": "Retrieve details for a specific booking or all bookings under a guest's name.\nEither booking_id or guest_name must be provided.\n\nArgs:\n booking_id: The custom booking ID to search for (e.g., \"HB-1\").\n guest_name: The guest name to search for (returns all bookings for this guest).\n\nReturns:\n A dictionary of booking details if booking_id is provided, or a list of booking dictionaries if guest_name is provided.\n",
+      "inputSchema": {
+        "properties": {
+          "booking_id": {
+            "default": null,
+            "title": "Booking Id",
+            "type": "string"
+          },
+          "guest_name": {
+            "default": null,
+            "title": "Guest Name",
+            "type": "string"
+          }
+        },
+        "title": "get_booking_detailsArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true
+      }
+    }
+  ]
+}
