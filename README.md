@@ -501,11 +501,11 @@ Now you can update the `./debugger/interceptor.py` as per your requirement and t
 Please use the following URL - https://docs.cloud.google.com/gemini-enterprise-agent-platform/troubleshooting/troubleshoot-agent-gateway
 
 
-#### Optional (but recommended)
+### Optional (but recommended)
 
 Following steps are not needed for you to develop and test your extension but are recommended when your extension is ready for production / production deployment
 
-##### Enforcing Agent Gateway IAP IAM Policies
+#### Enforcing Agent Gateway IAP IAM Policies
 
 Until now our Agent Gateway has been in the `DRY_RUN` mode. We can switch it to enforce EGRESS access from Agent as needed by our policies.
 
@@ -520,7 +520,7 @@ Then
 4. Update the Agent Gateway REQUEST_AUTHZ extension to enforced mode
 
 
-###### Register all endpoints
+##### Register all endpoints
 
 ```bash
 
@@ -550,7 +550,7 @@ Click the endpoint to view the registered URLs (do not edit or update in console
 
 </details>
 
-###### Provide access to endpoints and MCP server
+##### Provide access to endpoints and MCP server
 
 We are going to use Google Cloud Console instead of `gcloud` commands for this task.
 
@@ -565,7 +565,7 @@ Use the steps shown in screenshots below to
 
 ![alt](doc-images/policies-3.png)
 
-###### Switch policy enforcement on Agent Gateway
+##### Switch policy enforcement on Agent Gateway
 
 Run the following command to find all Auth policies.
 
@@ -654,7 +654,7 @@ gcloud beta service-extensions authz-extensions import ${EXTENSION_NAME}   --sou
 
 Now the Gateway is in enforcement mode, Go ahead and test in agent playgound and check logs as before. Noitce Agent gateway logs showing the enforcements as well.
 
-##### Production Deployment
+#### Production Deployment
 
 Currently our service extension is open to internet (Option 1), however for production use, one of the following deployment options are recommended (2-4)
 
