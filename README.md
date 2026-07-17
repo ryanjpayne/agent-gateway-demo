@@ -9,7 +9,8 @@ This repository has the following components:
 3. A Service Extension to be used to create a `CONTENT_AUTHZ` policy to intercept Agent to MCP calls. ( `debugger`). You can develop it further as per your requirements, currently it logs request and response (both header and body).
 
 
-<p style="background-color:teal;padding:20px;border-radius:10px">💡 Note - This deployment setup is meant to be used till you complete the extension development, after that the extension should be deployed either as an authenticated Cloud Run Service or as a Backend Service in internal VPC (with Agent Gateway Network Attachment), please check the "Optional" section below for more details.</p>
+> [!NOTE]
+> This deployment setup is meant to be used till you complete the extension development. After that, the extension should be deployed either as an authenticated Cloud Run Service or as a Backend Service in internal VPC (with Agent Gateway Network Attachment). Please check the "Optional" section below for more details.
 
 
 ## Deployment Instructions 
@@ -148,7 +149,8 @@ For this task we are going to use Google Cloud Console instead of `gcloud` comma
 
 Search for Agent platform in Google Cloud Console. Click Agent Registry on the page, then MCP servers and then Add MCP Server - as shown below in the screenshots
 
->🗒️ Note -  You may need to click Enable Agent Registry in case the UI presents the message to do so, even though it is already enabled above (or you can just refresh the page)
+> [!NOTE]
+> You may need to click Enable Agent Registry in case the UI presents the message to do so, even though it is already enabled above (or you can just refresh the page).
 
 ![alt](./doc-images/mcp-0.png)
 
@@ -159,7 +161,8 @@ Fill in the details as shown below (use the region you have been using so far).
 
 Copy the contents of `schema.json` from `./hotel_booker_direct_mcp` and add to `JSON` field in the screen (these are tools in our MCP server)
 
-<p style="background-color:tomato;padding:20px;border-radius:10px">💡 <b>IMPORTANT</b> - When filling the MCP SERVER URL make sure you add `/mcp` at the end of the Cloud Run URL for the MCP server, Don't use Import Tools link.</p>
+> [!IMPORTANT]
+> When filling the MCP SERVER URL, make sure you add `/mcp` at the end of the Cloud Run URL for the MCP server. Do not use the Import Tools link.
 
 Click Next
 
@@ -201,7 +204,8 @@ For this task we are going to use Google Cloud Console instead of `gcloud` comma
 
 Search for Agent Platform in Google Cloud Console, select Gateways and create the gateway as shown in the image below (make sure using the same region throughout)
 
-<p style="background-color:teal;padding:20px;border-radius:10px">💡 <b>IMPORTANT</b> - Please use the Agent Gateway name as <code>REGION</code>-gw for consistency e.g. <code>us-central1-gw</code> - we have already exported this name as <code>AGENT_GATEWAY_NAME</code> </p>
+> [!IMPORTANT]
+> Please use the Agent Gateway name as `${REGION}-gw` for consistency (e.g. `us-central1-gw`). We have already exported this name as `AGENT_GATEWAY_NAME`.
 
 ![alt](./doc-images/agw-1.png)
 
@@ -563,11 +567,17 @@ Use the steps shown in screenshots below to
 
 ![alt](doc-images/policies-2.png)
 
+Provide MCP access to Agent
+
 ![alt](doc-images/policies-3.png)
 
-##### Switch policy enforcement on Agent Gateway
+List of policies - 
 
-Run the following command to find all Auth policies.
+![alt](doc-images/policies-4.png)
+
+##### Switch enforcement on Agent Gateway
+
+Run the following command to find all Auth extensions.
 
 ```bash
 
@@ -654,9 +664,9 @@ gcloud beta service-extensions authz-extensions import ${EXTENSION_NAME}   --sou
 
 Now the Gateway is in enforcement mode, Go ahead and test in agent playgound and check logs as before. Noitce Agent gateway logs showing the enforcements as well.
 
-#### Production Deployment
+#### Non Demo Deployment
 
-Currently our service extension is open to internet (Option 1), however for production use, one of the following deployment options are recommended (2-4)
+Currently our service extension is open to internet (Option 1), however for real world use, one of the following deployment options are recommended (2-4)
 
 For option 2 -
 
