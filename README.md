@@ -13,6 +13,34 @@ This repository has the following components:
 > This deployment setup is meant to be used till you complete the extension development. After that, the extension should be deployed either as an authenticated Cloud Run Service or as a Backend Service in internal VPC (with Agent Gateway Network Attachment). Please check the "Optional" section below for more details.
 
 
+## Table of Contents
+
+- [Deployment Instructions](#deployment-instructions)
+  - [Export variables and enable required APIs](#export-variables-and-enable-required-apis)
+  - [MCP Server](#mcp-server)
+    - [Add MCP server to the Registry](#add-mcp-server-to-the-registry)
+  - [Agent Gateway](#agent-gateway)
+    - [1. Create Agent gateway](#1-create-agent-gateway)
+    - [2. Deploy Service Extension Ext Proc Container](#2-deploy-service-extension-ext-proc-container)
+    - [3. Create Service Extension](#3-create-service-extension)
+    - [4. Create CONTENT_AUTHZ policy](#4-create-content_authz-policy)
+  - [Agent](#agent)
+    - [Locally Testing](#locally-testing)
+    - [Provide IAM Access Agent Registry to all agents](#provide-iam-access-agent-registry-to-all-agents)
+    - [Deploy in Agent Runtime (Agent Engine)](#deploy-in-agent-runtime-agent-engine)
+    - [Verify Agent Engine agent to MCP conversations intercepted in by Agent GW](#verify-agent-engine-agent-to-mcp-conversations-intercepted-in-by-agent-gw)
+    - [Next steps](#next-steps)
+    - [Debugging Agent Gateway issues](#debugging-agent-gateway-issues)
+- [Optional (but recommended)](#optional-but-recommended)
+  - [Enforcing Agent Gateway IAP IAM Policies](#enforcing-agent-gateway-iap-iam-policies)
+    - [Register all endpoints](#register-all-endpoints)
+    - [Provide access to endpoints and MCP server](#provide-access-to-endpoints-and-mcp-server)
+    - [Switch enforcement on Agent Gateway](#switch-enforcement-on-agent-gateway)
+  - [Non Demo Deployment](#non-demo-deployment)
+  - [Capture all outbound traffic from Agent](#capture-all-outbound-traffic-from-agent)
+
+
+
 ## Deployment Instructions 
 
 Clone this repository to Google Cloud Shell.
@@ -509,6 +537,11 @@ Please use the following URL - https://docs.cloud.google.com/gemini-enterprise-a
 
 Following steps are not needed for you to develop and test your extension but are recommended when your extension is ready for production / production deployment
 
+
+#### Capture all outbound traffic from Agent
+Currently weare capturing only Agent to MCP traffic ([by adding HTTP rules to the CONTENT_AUTHZ policy](#4-create-content_authz-policy)). You can remove the `httpRules` section and re-import the policy which will enable interception of all Agent outbound traffic.
+
+
 #### Enforcing Agent Gateway IAP IAM Policies
 
 Until now our Agent Gateway has been in the `DRY_RUN` mode. We can switch it to enforce EGRESS access from Agent as needed by our policies.
@@ -711,3 +744,7 @@ flowchart TD
     style T3 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
     style T4 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
 ```
+
+
+#### Capture all outbound traffic from Agent
+Currently weare capturing only Agent to MCP traffic ([by adding HTTP rules to the CONTENT_AUTHZ policy](#4-create-content_authz-policy)). You can remove the `httpRules` section and re-import the policy which will enable interception of all Agent outbound traffic.
