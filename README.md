@@ -37,7 +37,7 @@ This repository has the following components:
     - [Provide access to endpoints and MCP server](#provide-access-to-endpoints-and-mcp-server)
     - [Switch enforcement on Agent Gateway](#switch-enforcement-on-agent-gateway)
   - [Non Demo Deployment](#non-demo-deployment)
-  - [Capture all outbound traffic from Agent](#capture-all-outbound-traffic-from-agent)
+  - [Capture all outbound traffic from the agent](#capture-all-outbound-traffic-from-the-agent)
 
 
 
