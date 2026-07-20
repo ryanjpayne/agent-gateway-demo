@@ -706,41 +706,46 @@ For option 2 -
 
 For Option 3-4 require an ILB and the extension behind it. Make sure that the ILB to extension traffic is TLS enabled as required by the extension. 
 
+##### Option 1: Direct Public Cloud Run (Fastest / Demo)
+
 ```mermaid
-flowchart TD
+flowchart LR
+    AGW1["Agent Gateway"] ==>|"Direct Public HTTPS"| CR1["Cloud Run Debugger"]
 
-    subgraph O1 [" "]
-        T1["<b>Option 1: Direct Public Cloud Run (Fastest / Demo)</b>"]
-        AGW1["Agent Gateway"] ==>|"Direct Public HTTPS"| CR1["Cloud Run Debugger"]
-        T1 --> AGW1
-    end
+    classDef nodeStyle fill:#1e293b,color:#ffffff,stroke:#38bdf8,stroke-width:2px,font-weight:bold;
+    class AGW1,CR1 nodeStyle;
+```
 
-    subgraph O2 [" "]
-        T2["<b>Option 2: Authenticated Public Cloud Run</b>"]
-        AGW21["Agent Gateway"] ==>|"Private HTTPS / Authenticated"| CR21["Cloud Run Debugger"]
-        T2 --> AGW21
-    end
+##### Option 2: Authenticated Public Cloud Run
 
-    subgraph O3 [" "]
-        T3["<b>Option 3: Serverless Private VPC (Partner Guide Standard)</b>"]
-        AGW2["Agent Gateway"] ==>|"PSC Network Attachment"| ILB2["Regional ILB"] ==>|"Serverless NEG"| CR2["Cloud Run Debugger"]
-        T3 --> AGW2
-    end
+```mermaid
+flowchart LR
+    AGW21["Agent Gateway"] ==>|"Private HTTPS / Authenticated"| CR21["Cloud Run Debugger"]
 
-    subgraph O4 [" "]
-        T4["<b>Option 4: Full Private VM Deployment (Enterprise On-Prem/VM)</b>"]
-        AGW3["Agent Gateway"] ==>|"PSC Network Attachment"| ILB3["Regional ILB"] ==>|"Instance Group NEG"| VM3["Private GCE VM Container"]
-        T4 --> AGW3
-    end
+    classDef nodeStyle fill:#1e293b,color:#ffffff,stroke:#38bdf8,stroke-width:2px,font-weight:bold;
+    class AGW21,CR21 nodeStyle;
+```
 
-    O1 ~~~ O2 ~~~ O3 ~~~ O4
+##### Option 3: Serverless Private VPC (Partner Guide Standard)
 
-    style T1 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    style T2 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    style T3 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    style T4 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+```mermaid
+flowchart LR
+    AGW2["Agent Gateway"] ==>|"PSC Network Attachment"| ILB2["Regional ILB"] ==>|"Serverless NEG"| CR2["Cloud Run Debugger"]
+
+    classDef nodeStyle fill:#1e293b,color:#ffffff,stroke:#38bdf8,stroke-width:2px,font-weight:bold;
+    class AGW2,ILB2,CR2 nodeStyle;
+```
+
+##### Option 4: Full Private VM Deployment (Enterprise On-Prem/VM)
+
+```mermaid
+flowchart LR
+    AGW3["Agent Gateway"] ==>|"PSC Network Attachment"| ILB3["Regional ILB"] ==>|"Instance Group NEG"| VM3["Private GCE VM Container"]
+
+    classDef nodeStyle fill:#1e293b,color:#ffffff,stroke:#38bdf8,stroke-width:2px,font-weight:bold;
+    class AGW3,ILB3,VM3 nodeStyle;
 ```
 
 
-#### Capture all outbound traffic from Agent
+#### Capture all outbound traffic from the agent
 Currently we are capturing only Agent to MCP traffic ([by adding HTTP rules to the CONTENT_AUTHZ policy](#4-create-content_authz-policy)). You can remove the `httpRules` section and re-import the policy which will enable interception of all Agent outbound traffic.
