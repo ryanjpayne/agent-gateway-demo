@@ -538,10 +538,6 @@ Please use the following URL - https://docs.cloud.google.com/gemini-enterprise-a
 Following steps are not needed for you to develop and test your extension but are recommended when your extension is ready for production / production deployment
 
 
-#### Capture all outbound traffic from Agent
-Currently weare capturing only Agent to MCP traffic ([by adding HTTP rules to the CONTENT_AUTHZ policy](#4-create-content_authz-policy)). You can remove the `httpRules` section and re-import the policy which will enable interception of all Agent outbound traffic.
-
-
 #### Enforcing Agent Gateway IAP IAM Policies
 
 Until now our Agent Gateway has been in the `DRY_RUN` mode. We can switch it to enforce EGRESS access from Agent as needed by our policies.
@@ -747,4 +743,4 @@ flowchart TD
 
 
 #### Capture all outbound traffic from Agent
-Currently weare capturing only Agent to MCP traffic ([by adding HTTP rules to the CONTENT_AUTHZ policy](#4-create-content_authz-policy)). You can remove the `httpRules` section and re-import the policy which will enable interception of all Agent outbound traffic.
+Currently we are capturing only Agent to MCP traffic ([by adding HTTP rules to the CONTENT_AUTHZ policy](#4-create-content_authz-policy)). You can remove the `httpRules` section and re-import the policy which will enable interception of all Agent outbound traffic.
