@@ -13,3 +13,11 @@ uv.lock
 
 # ADK
 .adk/
+
+
+data.db
+
+# Code Mender Artifacts
+.cm_project
+.exploit/
+
