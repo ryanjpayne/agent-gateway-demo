@@ -1,0 +1,16 @@
+name: projects/ryanpaynegcp/locations/us-east1/authzPolicies/us-east1-authz-policy
+action: CUSTOM
+customProvider:
+  authzExtension:
+    resources:
+    - projects/162536808686/locations/us-east1/authzExtensions/cloudrun-extproc-extn
+policyProfile: CONTENT_AUTHZ
+target:
+  resources:
+  - projects/162536808686/locations/us-east1/agentGateways/us-east1-gw
+httpRules:
+- to:
+    operations:
+    - paths:
+      - prefix: /
+  when: "request.host == 'hotel-booker-mcp-server-162536808686.us-east1.run.app'"

@@ -59,11 +59,11 @@ cd agent-gateway-demo
 
 ```bash
 
-export PROJECT_ID="<ADD GCP PROJECT ID HERE>"
+export PROJECT_ID=ryanpaynegcp
 # get the project number
-export ORG_ID=<ORG_ID>
+export ORG_ID=crowdstrike-gcp-lab.io
 export PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
-export REGION="<ADD REGION HERE>"
+export REGION=us-east1
 export REPO_NAME=${REGION}-repo
 export EXTENSION_NAME=cloudrun-extproc-extn
 export ALL_AGENTS=principalSet://agents.global.org-${ORG_ID}.system.id.goog/attribute.platformContainer/aiplatform/projects/${PROJECT_NUMBER}
@@ -252,18 +252,24 @@ gcloud artifacts repositories create ${REPO_NAME} \
 ```bash
 
 # Configure Docker auth
-gcloud auth configure-docker \
-    us-central1-docker.pkg.dev
+gcloud auth configure-docker $REGION-docker.pkg.dev
 
 # Build Image
 docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/debugger:latest ./debugger
 
-```
-
-```bash
 # Push Image
 docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/debugger:latest
 
+
+# Or with podman
+# Auth (replaces gcloud auth configure-docker)
+gcloud auth print-access-token | podman login -u oauth2accesstoken --password-stdin $REGION-docker.pkg.dev
+                
+# Build (identical, just swap docker → podman)
+podman build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/debugger:latest ./debugger
+
+# Push (identical, just swap docker → podman)
+podman push $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/debugger:latest
 ```
 
 ```bash

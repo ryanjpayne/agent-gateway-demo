@@ -1,0 +1,6 @@
+name: projects/ryanpaynegcp/locations/us-east1/authzExtensions/cloudrun-extproc-extn
+service: debugger-162536808686.us-east1.run.app
+authority: debugger-162536808686.us-east1.run.app
+timeout: 10s
+failOpen: true
+description: "Public Cloud Run Debugger Extension"

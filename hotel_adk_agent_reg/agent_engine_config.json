@@ -1,0 +1,11 @@
+{
+  "agent_gateway_config": {
+    "agent_to_anywhere_config": {
+      "agent_gateway": "projects/ryanpaynegcp/locations/us-east1/agentGateways/us-east1-gw"
+    }
+  },
+  "identity_type": "AGENT_IDENTITY",
+  "env_vars": {
+    "GOOGLE_API_PREVENT_AGENT_TOKEN_SHARING_FOR_GCP_SERVICES": "False"
+  }
+}
