@@ -1,0 +1,11 @@
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "prompts/get",
+  "params": {
+    "name": "code_review",
+    "arguments": {
+      "code": "def hello(): pass"
+    }
+  }
+}

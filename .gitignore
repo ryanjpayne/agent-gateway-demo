@@ -21,3 +21,5 @@ data.db
 .cm_project
 .exploit/
 
+# Mac
+.DS_Store

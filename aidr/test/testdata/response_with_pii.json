@@ -1,0 +1,21 @@
+{
+  "id": "chatcmpl-123456",
+  "object": "chat.completion",
+  "created": 1677858242,
+  "model": "gpt-4",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Based on your information, John Smith with email john.smith@example.com and SSN 123-45-6789, here are the tax deductions you can claim. Your credit card number 4111-1111-1111-1111 was also found in our records."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 50,
+    "completion_tokens": 100,
+    "total_tokens": 150
+  }
+}

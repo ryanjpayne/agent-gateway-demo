@@ -1,0 +1,13 @@
+# Build artifacts
+bin/
+*.exe
+cover.out
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
+
+# Mac
+.DS_Store

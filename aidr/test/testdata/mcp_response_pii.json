@@ -1,0 +1,12 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Found 1 user: John Doe, SSN 123-45-6789, credit card 4111-1111-1111-1111"
+      }
+    ]
+  }
+}

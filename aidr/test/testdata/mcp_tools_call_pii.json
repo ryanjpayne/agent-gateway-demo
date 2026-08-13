@@ -1,0 +1,12 @@
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "send_email",
+    "arguments": {
+      "to": "admin@example.com",
+      "body": "Please update my records. My name is John Smith, SSN 123-45-6789, credit card 4111-1111-1111-1111"
+    }
+  }
+}

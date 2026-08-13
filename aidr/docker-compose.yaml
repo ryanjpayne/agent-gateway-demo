@@ -1,0 +1,30 @@
+services:
+  aidr-shim:
+    build: .
+    environment:
+      - ECHO_MODE=true
+      - ALLOW_ECHO_MODE=true
+      - AIDR_CLOUD=us-1
+      - AIDR_TOKEN=dummy
+      - LOG_LEVEL=debug
+      - DEBUG_MODE=true
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+
+  envoy:
+    image: envoyproxy/envoy:v1.31.6
+    volumes:
+      - ./envoy.yaml:/etc/envoy/envoy.yaml:ro
+    ports:
+      - "10000:10000"
+      - "9901:9901"
+    depends_on:
+      - aidr-shim
+
+  echo-server:
+    image: mendhak/http-https-echo:35
+    environment:
+      - HTTP_PORT=8080
+    ports:
+      - "8000:8080"
