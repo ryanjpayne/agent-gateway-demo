@@ -129,9 +129,12 @@ func TestCalloutService_AllowedRequest(t *testing.T) {
 		t.Fatal("expected RequestBody response")
 	}
 
-	// Should have no body mutation (allowed unchanged)
-	if body.RequestBody.Response.BodyMutation != nil {
-		t.Error("expected no body mutation for allowed request")
+	// Should echo back original body via StreamedResponse (required by FULL_DUPLEX_STREAMED mode)
+	if body.RequestBody.Response.BodyMutation == nil {
+		t.Fatal("expected body mutation (StreamedResponse) for allowed request")
+	}
+	if _, ok := body.RequestBody.Response.BodyMutation.Mutation.(*extprocv3.BodyMutation_StreamedResponse); !ok {
+		t.Error("expected BodyMutation_StreamedResponse for allowed request")
 	}
 }
 
@@ -281,14 +284,14 @@ func TestCalloutService_TransformedRequest(t *testing.T) {
 		t.Fatal("expected body mutation for transformed request")
 	}
 
-	mutatedBody, ok := body.RequestBody.Response.BodyMutation.Mutation.(*extprocv3.BodyMutation_Body)
+	mutatedBody, ok := body.RequestBody.Response.BodyMutation.Mutation.(*extprocv3.BodyMutation_StreamedResponse)
 	if !ok {
-		t.Fatal("expected BodyMutation_Body")
+		t.Fatal("expected BodyMutation_StreamedResponse")
 	}
 
 	// Verify the mutated body contains the redacted content
 	var mutatedPayload map[string]any
-	if err := json.Unmarshal(mutatedBody.Body, &mutatedPayload); err != nil {
+	if err := json.Unmarshal(mutatedBody.StreamedResponse.Body, &mutatedPayload); err != nil {
 		t.Fatalf("failed to unmarshal mutated body: %v", err)
 	}
 
@@ -386,14 +389,14 @@ func TestCalloutService_TransformedResponse(t *testing.T) {
 		t.Fatal("expected body mutation for transformed response")
 	}
 
-	mutatedBody, ok := body.ResponseBody.Response.BodyMutation.Mutation.(*extprocv3.BodyMutation_Body)
+	mutatedBody, ok := body.ResponseBody.Response.BodyMutation.Mutation.(*extprocv3.BodyMutation_StreamedResponse)
 	if !ok {
-		t.Fatal("expected BodyMutation_Body")
+		t.Fatal("expected BodyMutation_StreamedResponse")
 	}
 
 	// Verify the mutated body contains the redacted content
 	var mutatedPayload map[string]any
-	if err := json.Unmarshal(mutatedBody.Body, &mutatedPayload); err != nil {
+	if err := json.Unmarshal(mutatedBody.StreamedResponse.Body, &mutatedPayload); err != nil {
 		t.Fatalf("failed to unmarshal mutated body: %v", err)
 	}
 
@@ -426,7 +429,7 @@ func TestCalloutService_TransformedResponse(t *testing.T) {
 	for _, h := range headerMut.SetHeaders {
 		if h.Header.Key == "content-length" {
 			foundCL = true
-			expected := fmt.Sprintf("%d", len(mutatedBody.Body))
+			expected := fmt.Sprintf("%d", len(mutatedBody.StreamedResponse.Body))
 			if h.Header.Value != expected {
 				t.Errorf("expected Content-Length %s, got %s", expected, h.Header.Value)
 			}
@@ -568,9 +571,12 @@ func TestCalloutService_AIDRError(t *testing.T) {
 		t.Fatal("expected RequestBody response (fail-open on AIDR error)")
 	}
 
-	// Should have no body mutation (allowed unchanged)
-	if body.RequestBody.Response.BodyMutation != nil {
-		t.Error("expected no body mutation when failing open")
+	// Should echo back original body via StreamedResponse (required by FULL_DUPLEX_STREAMED mode)
+	if body.RequestBody.Response.BodyMutation == nil {
+		t.Fatal("expected body mutation (StreamedResponse) when failing open")
+	}
+	if _, ok := body.RequestBody.Response.BodyMutation.Mutation.(*extprocv3.BodyMutation_StreamedResponse); !ok {
+		t.Error("expected BodyMutation_StreamedResponse when failing open")
 	}
 }
 
@@ -616,9 +622,12 @@ func TestCalloutService_InvalidJSON(t *testing.T) {
 		t.Fatal("expected RequestBody response (fail-open on invalid JSON)")
 	}
 
-	// Should have no body mutation
-	if body.RequestBody.Response.BodyMutation != nil {
-		t.Error("expected no body mutation when failing open")
+	// Should echo back original body via StreamedResponse (required by FULL_DUPLEX_STREAMED mode)
+	if body.RequestBody.Response.BodyMutation == nil {
+		t.Fatal("expected body mutation (StreamedResponse) when failing open on invalid JSON")
+	}
+	if _, ok := body.RequestBody.Response.BodyMutation.Mutation.(*extprocv3.BodyMutation_StreamedResponse); !ok {
+		t.Error("expected BodyMutation_StreamedResponse when failing open on invalid JSON")
 	}
 }
 
@@ -814,9 +823,12 @@ func TestCalloutService_EchoMode(t *testing.T) {
 		t.Fatal("expected RequestBody response (echo mode should allow)")
 	}
 
-	// Should have no body mutation (allowed unchanged)
-	if body.RequestBody.Response.BodyMutation != nil {
-		t.Error("expected no body mutation in echo mode")
+	// Should echo back original body via StreamedResponse (required by FULL_DUPLEX_STREAMED mode)
+	if body.RequestBody.Response.BodyMutation == nil {
+		t.Fatal("expected body mutation (StreamedResponse) in echo mode")
+	}
+	if _, ok := body.RequestBody.Response.BodyMutation.Mutation.(*extprocv3.BodyMutation_StreamedResponse); !ok {
+		t.Error("expected BodyMutation_StreamedResponse in echo mode")
 	}
 }
 
@@ -2190,13 +2202,16 @@ func TestCalloutService_ToolsListTransformSkipped(t *testing.T) {
 		t.Fatalf("expected 1 response, got %d", len(stream.responses))
 	}
 
-	// Must be a ResponseBody allow — not an ImmediateResponse (which would mean
-	// the original body was replaced with incompatible guard_output).
+	// Must be a ResponseBody allow using StreamedResponse — not an ImmediateResponse (block)
+	// and not a Body mutation (which would corrupt the MCP JSON-RPC envelope).
 	resp, ok := stream.responses[0].Response.(*extprocv3.ProcessingResponse_ResponseBody)
 	if !ok {
 		t.Fatalf("expected ResponseBody (allow), got %T", stream.responses[0].Response)
 	}
-	if resp.ResponseBody.Response.BodyMutation != nil {
-		t.Error("body must not be mutated for tools/list transform — MCP envelope would be corrupted")
+	if resp.ResponseBody.Response.BodyMutation == nil {
+		t.Fatal("expected StreamedResponse body mutation for tools/list allow-through")
+	}
+	if _, ok := resp.ResponseBody.Response.BodyMutation.Mutation.(*extprocv3.BodyMutation_StreamedResponse); !ok {
+		t.Error("expected BodyMutation_StreamedResponse — Body mutation would corrupt the MCP envelope")
 	}
 }

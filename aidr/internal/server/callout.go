@@ -112,7 +112,7 @@ func (s *CalloutService) Process(stream extprocv3.ExternalProcessor_ProcessServe
 					"error", err,
 					"request_id", requestID,
 				)
-				resp = s.errorResponse(true)
+				resp = s.errorResponse(true, v.RequestBody.Body, v.RequestBody.EndOfStream)
 			}
 		case *extprocv3.ProcessingRequest_ResponseHeaders:
 			resp = s.handleResponseHeaders(ctx, v.ResponseHeaders)
@@ -123,7 +123,7 @@ func (s *CalloutService) Process(stream extprocv3.ExternalProcessor_ProcessServe
 					"error", err,
 					"request_id", requestID,
 				)
-				resp = s.errorResponse(false)
+				resp = s.errorResponse(false, v.ResponseBody.Body, v.ResponseBody.EndOfStream)
 			}
 		default:
 			resp = &extprocv3.ProcessingResponse{}
@@ -155,14 +155,14 @@ func (s *CalloutService) handleResponseHeaders(_ context.Context, _ *extprocv3.H
 }
 
 func (s *CalloutService) handleRequestBody(ctx context.Context, body *extprocv3.HttpBody) (*extprocv3.ProcessingResponse, error) {
-	return s.processBody(ctx, body.Body, aidr.AIGuardGuardChatCompletionsParamsEventTypeInput, true)
+	return s.processBody(ctx, body.Body, body.EndOfStream, aidr.AIGuardGuardChatCompletionsParamsEventTypeInput, true)
 }
 
 func (s *CalloutService) handleResponseBody(ctx context.Context, body *extprocv3.HttpBody) (*extprocv3.ProcessingResponse, error) {
-	return s.processBody(ctx, body.Body, aidr.AIGuardGuardChatCompletionsParamsEventTypeOutput, false)
+	return s.processBody(ctx, body.Body, body.EndOfStream, aidr.AIGuardGuardChatCompletionsParamsEventTypeOutput, false)
 }
 
-func (s *CalloutService) processBody(ctx context.Context, body []byte, eventType aidr.AIGuardGuardChatCompletionsParamsEventType, isRequest bool) (*extprocv3.ProcessingResponse, error) {
+func (s *CalloutService) processBody(ctx context.Context, body []byte, endOfStream bool, eventType aidr.AIGuardGuardChatCompletionsParamsEventType, isRequest bool) (*extprocv3.ProcessingResponse, error) {
 	eventTypeStr := "request"
 	if !isRequest {
 		eventTypeStr = "response"
@@ -175,7 +175,7 @@ func (s *CalloutService) processBody(ctx context.Context, body []byte, eventType
 
 	// Empty bodies (e.g. chunked transfer or 204 responses) can't be scanned.
 	if len(body) == 0 {
-		return s.allowResponse(isRequest), nil
+		return s.allowResponse(isRequest, body, endOfStream), nil
 	}
 
 	// Bodies exceeding maxBodySize are allowed through without scanning.
@@ -185,7 +185,7 @@ func (s *CalloutService) processBody(ctx context.Context, body []byte, eventType
 			"body_size", len(body),
 			"max_size", maxBodySize,
 		)
-		return s.allowResponse(isRequest), nil
+		return s.allowResponse(isRequest, body, endOfStream), nil
 	}
 
 	// Parse the body as JSON to extract guard_input structure.
@@ -195,7 +195,7 @@ func (s *CalloutService) processBody(ctx context.Context, body []byte, eventType
 			"type", eventTypeStr,
 			"body_size", len(body),
 		)
-		return s.allowResponse(isRequest), nil
+		return s.allowResponse(isRequest, body, endOfStream), nil
 	}
 
 	var payload map[string]any
@@ -212,7 +212,7 @@ func (s *CalloutService) processBody(ctx context.Context, body []byte, eventType
 			"type", eventTypeStr,
 			"body_size", len(body),
 		)
-		return s.allowResponse(isRequest), nil
+		return s.allowResponse(isRequest, body, endOfStream), nil
 	}
 
 	// Build guard_input - the SDK accepts any as guard_input so we pass the parsed payload
@@ -227,7 +227,7 @@ func (s *CalloutService) processBody(ctx context.Context, body []byte, eventType
 	//   - messages/tools extracted directly, or prompt converted to messages.
 	var guardInput map[string]any
 	if isMCPError(payload) {
-		return s.allowResponse(isRequest), nil
+		return s.allowResponse(isRequest, body, endOfStream), nil
 	}
 	if isMCPResponse(payload) {
 		guardInput = s.extractMCPResponseContent(payload)
@@ -235,7 +235,7 @@ func (s *CalloutService) processBody(ctx context.Context, body []byte, eventType
 		guardInput = s.buildGuardInput(payload)
 	}
 	if guardInput == nil {
-		return s.allowResponse(isRequest), nil
+		return s.allowResponse(isRequest, body, endOfStream), nil
 	}
 
 	// Call AIDR
@@ -279,11 +279,11 @@ func (s *CalloutService) processBody(ctx context.Context, body []byte, eventType
 		// envelope. Allow through — the block path above still enforces policy.
 		if isMCPToolsListResponse(payload) {
 			s.logger.Info("AIDR transform skipped for tools/list response — MCP envelope cannot be reconstructed")
-			return s.allowResponse(isRequest), nil
+			return s.allowResponse(isRequest, body, endOfStream), nil
 		}
 		s.logger.Info("request transformed by AIDR policy")
 		s.logger.Debug("transformed output", "has_guard_output", true)
-		resp, err := s.transformedResponse(aidrResp.Result.GuardOutput, isRequest)
+		resp, err := s.transformedResponse(aidrResp.Result.GuardOutput, isRequest, endOfStream)
 		if err != nil {
 			return nil, fmt.Errorf("create transformed response: %w", err)
 		}
@@ -291,7 +291,7 @@ func (s *CalloutService) processBody(ctx context.Context, body []byte, eventType
 	}
 
 	// Allow unchanged
-	return s.allowResponse(isRequest), nil
+	return s.allowResponse(isRequest, body, endOfStream), nil
 }
 
 // buildGuardInput constructs the guard_input structure from the incoming payload.
@@ -666,24 +666,39 @@ func generateRequestID() string {
 }
 
 // errorResponse returns an allow or deny response based on the configured failure mode.
-func (s *CalloutService) errorResponse(isRequest bool) *extprocv3.ProcessingResponse {
+// The original body and endOfStream are required to echo the body back in FULL_DUPLEX_STREAMED mode.
+func (s *CalloutService) errorResponse(isRequest bool, body []byte, endOfStream bool) *extprocv3.ProcessingResponse {
 	if s.failClosed {
 		resp, err := s.blockedResponse(isRequest)
 		if err != nil {
 			s.logger.Error("failed to create blocked response during error handling", "error", err)
-			return s.allowResponse(isRequest)
+			return s.allowResponse(isRequest, body, endOfStream)
 		}
 		return resp
 	}
-	return s.allowResponse(isRequest)
+	return s.allowResponse(isRequest, body, endOfStream)
 }
 
-func (s *CalloutService) allowResponse(isRequest bool) *extprocv3.ProcessingResponse {
+// allowResponse echoes the original body back via StreamedBodyResponse.
+// The Agent Gateway CONTENT_AUTHZ extension uses FULL_DUPLEX_STREAMED mode:
+// an empty CommonResponse{} drops the body. The body and endOfStream flag
+// must always be explicitly returned so Envoy forwards the payload unchanged.
+func (s *CalloutService) allowResponse(isRequest bool, body []byte, endOfStream bool) *extprocv3.ProcessingResponse {
+	bodyMutation := &extprocv3.BodyMutation{
+		Mutation: &extprocv3.BodyMutation_StreamedResponse{
+			StreamedResponse: &extprocv3.StreamedBodyResponse{
+				Body:        body,
+				EndOfStream: endOfStream,
+			},
+		},
+	}
 	if isRequest {
 		return &extprocv3.ProcessingResponse{
 			Response: &extprocv3.ProcessingResponse_RequestBody{
 				RequestBody: &extprocv3.BodyResponse{
-					Response: &extprocv3.CommonResponse{},
+					Response: &extprocv3.CommonResponse{
+						BodyMutation: bodyMutation,
+					},
 				},
 			},
 		}
@@ -691,7 +706,9 @@ func (s *CalloutService) allowResponse(isRequest bool) *extprocv3.ProcessingResp
 	return &extprocv3.ProcessingResponse{
 		Response: &extprocv3.ProcessingResponse_ResponseBody{
 			ResponseBody: &extprocv3.BodyResponse{
-				Response: &extprocv3.CommonResponse{},
+				Response: &extprocv3.CommonResponse{
+					BodyMutation: bodyMutation,
+				},
 			},
 		},
 	}
@@ -734,10 +751,9 @@ func (s *CalloutService) blockedResponse(isRequest bool) (*extprocv3.ProcessingR
 	}, nil
 }
 
-// transformedResponse replaces the entire original body with AIDR's guard_output.
-// This is intentional: AIDR returns the full sanitized payload, not a diff, so the
-// original body must be fully replaced to apply the transformation.
-func (s *CalloutService) transformedResponse(guardOutput any, isRequest bool) (*extprocv3.ProcessingResponse, error) {
+// transformedResponse replaces the original body with AIDR's guard_output using
+// StreamedBodyResponse, required by the Agent Gateway FULL_DUPLEX_STREAMED mode.
+func (s *CalloutService) transformedResponse(guardOutput any, isRequest bool, endOfStream bool) (*extprocv3.ProcessingResponse, error) {
 	// Marshal the guard output back to JSON
 	bodyBytes, err := json.Marshal(guardOutput)
 	if err != nil {
@@ -745,8 +761,11 @@ func (s *CalloutService) transformedResponse(guardOutput any, isRequest bool) (*
 	}
 
 	bodyMutation := &extprocv3.BodyMutation{
-		Mutation: &extprocv3.BodyMutation_Body{
-			Body: bodyBytes,
+		Mutation: &extprocv3.BodyMutation_StreamedResponse{
+			StreamedResponse: &extprocv3.StreamedBodyResponse{
+				Body:        bodyBytes,
+				EndOfStream: endOfStream,
+			},
 		},
 	}
 

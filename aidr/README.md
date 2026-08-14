@@ -170,7 +170,7 @@ export PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(p
 export REGION=us-east1
 export EXTENSION_NAME=cloudrun-extproc-extn
 export AGENT_GATEWAY_NAME=${REGION}-gw
-export AUTHZ_POLICY_NAME=<your-authz-policy-name>   # e.g. hotel-agent-authz
+export AUTHZ_POLICY_NAME=agent-gateway-authz         # any name; must match if policy already exists
 export MCP_SERVER_HOST=<mcp-server-hostname>         # e.g. hotel-booker-mcp-server-162536808686.us-east1.run.app
 ```
 
