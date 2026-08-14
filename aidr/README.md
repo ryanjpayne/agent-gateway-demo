@@ -154,11 +154,130 @@ Key environment variables:
 
 See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for all options.
 
+## Agent Gateway Integration (agent-gateway-demo)
+
+After running `./scripts/deploy.sh`, wire the shim into the Vertex AI Agent Gateway
+as a `CONTENT_AUTHZ` service extension. This replaces the `debugger` ext_proc from
+the main demo.
+
+### Prerequisites
+
+Ensure these shell variables are set (they are defined in the main demo README):
+
+```bash
+export PROJECT_ID=<your-project-id>
+export PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
+export REGION=us-east1
+export EXTENSION_NAME=cloudrun-extproc-extn
+export AGENT_GATEWAY_NAME=${REGION}-gw
+export AUTHZ_POLICY_NAME=<your-authz-policy-name>   # e.g. hotel-agent-authz
+export MCP_SERVER_HOST=<mcp-server-hostname>         # e.g. hotel-booker-mcp-server-162536808686.us-east1.run.app
+```
+
+### Step 1 — Set EXTENSION_HOST
+
+Use the internal hostname from the deploy output (no `https://` prefix):
+
+```bash
+export EXTENSION_HOST=<aidr-shim-hostname-from-deploy-output>
+# e.g. export EXTENSION_HOST=aidr-shim-wrimo4vtla-ue.a.run.app
+```
+
+### Step 2 — Register the authz extension
+
+```bash
+cat <<EOF > cloudrun_aidr_extension.yaml
+name: projects/${PROJECT_ID}/locations/${REGION}/authzExtensions/${EXTENSION_NAME}
+service: ${EXTENSION_HOST}
+authority: ${EXTENSION_HOST}
+timeout: 10s
+failOpen: true
+description: "AIDR ext_proc Security Extension"
+EOF
+
+# Verify values are populated
+cat cloudrun_aidr_extension.yaml
+
+# Import (creates or updates in place — replaces the debugger extension if present)
+gcloud beta service-extensions authz-extensions import ${EXTENSION_NAME} \
+  --source=cloudrun_aidr_extension.yaml \
+  --location=${REGION} \
+  --project=${PROJECT_ID}
+```
+
+### Step 3 — Create the CONTENT_AUTHZ policy
+
+Skip this step if the policy already exists and points at `${EXTENSION_NAME}`.
+
+```bash
+cat <<EOF > authz-policy.yaml
+name: projects/${PROJECT_ID}/locations/${REGION}/authzPolicies/${AUTHZ_POLICY_NAME}
+action: CUSTOM
+customProvider:
+  authzExtension:
+    resources:
+    - projects/${PROJECT_NUMBER}/locations/${REGION}/authzExtensions/${EXTENSION_NAME}
+policyProfile: CONTENT_AUTHZ
+target:
+  resources:
+  - projects/${PROJECT_NUMBER}/locations/${REGION}/agentGateways/${AGENT_GATEWAY_NAME}
+httpRules:
+- to:
+    operations:
+    - paths:
+      - prefix: /
+  when: "request.host == '${MCP_SERVER_HOST}'"
+EOF
+
+cat authz-policy.yaml
+
+gcloud beta network-security authz-policies import ${AUTHZ_POLICY_NAME} \
+  --location=${REGION} \
+  --source=authz-policy.yaml
+```
+
+### Step 4 — Redeploy the agent
+
+Re-run the Agent Engine deploy from the main demo so the agent picks up the new extension:
+
+```bash
+uv run adk deploy agent_engine \
+  --display_name hotel_agent \
+  --agent_engine_config_file ${PWD}/hotel_adk_agent_reg/agent_engine_config.json \
+  hotel_adk_agent_reg/
+```
+
+### Step 5 — Verify
+
+Trigger a tool call from the Agent Playground, then check the shim logs:
+
+```bash
+gcloud run services logs read aidr-shim --region=${REGION} --project=${PROJECT_ID} --limit=50
+```
+
+Expected log lines for a clean hotel booking interaction:
+
+```
+INFO  detected MCP payload  method=tools/list
+INFO  detected MCP payload  method=tools/call
+```
+
+## MCP Protocol Behavior
+
+| MCP event | AIDR action |
+|-----------|-------------|
+| `tools/list` request | Pass-through (no user content to scan) |
+| `tools/list` response | Scan `result.tools[]` for tool-poisoning attacks; block if detected; transform is skipped (AIDR guard_output cannot be safely reinjected into the MCP JSON-RPC envelope) |
+| `tools/call` request | Scan `params.arguments` for prompt injection / PII |
+| `tools/call` response | Scan `result.content[]` / `result.structuredContent` |
+| MCP error responses | Pass-through (protocol-level errors, not user content) |
+| `initialize`, notifications | Pass-through |
+
 ## Next Steps After Deployment
 
-1. **Configure Load Balancer**: Provide the service URL to Google for ext_proc configuration
-2. **Set Up Policies**: Configure AIDR policies in CrowdStrike Falcon console
-3. **Monitor**: View logs with `gcloud run services logs read aidr-shim --limit=50`
+1. **Wire into Agent Gateway**: Follow the [Agent Gateway Integration](#agent-gateway-integration-agent-gateway-demo) steps above
+2. **Set up policies**: Configure AIDR policies in the CrowdStrike Falcon console
+3. **Monitor**: View logs with `gcloud run services logs read aidr-shim --region=${REGION} --limit=50`
 
 ## License
 
