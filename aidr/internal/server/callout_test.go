@@ -2128,3 +2128,75 @@ func TestCalloutService_BodySizeLimit(t *testing.T) {
 		t.Fatal("expected RequestBody (allow) for oversized body")
 	}
 }
+
+func TestCalloutService_ToolsListTransformSkipped(t *testing.T) {
+	t.Parallel()
+	// AIDR returns Transformed for a tools/list response. The shim must allow
+	// the original body through unchanged: guard_output is in chat-completions
+	// format and cannot be safely reinjected into the MCP JSON-RPC envelope.
+	guardOutput := map[string]any{
+		"messages": []map[string]any{
+			{"role": "tool", "content": "sanitized tool description"},
+		},
+	}
+	mockClient := &mockAIDRClient{
+		response: &aidr.AIGuardGuardChatCompletionsResponse{
+			Result: aidr.AIGuardGuardChatCompletionsResponseResult{
+				Blocked:     false,
+				Transformed: true,
+				GuardOutput: guardOutput,
+			},
+		},
+	}
+
+	service := NewCalloutService(CalloutServiceParams{
+		AIDRClient: mockClient,
+		Logger:     newTestLogger(),
+	})
+
+	toolsListResponse, err := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"result": map[string]any{
+			"tools": []map[string]any{
+				{
+					"name":        "get_available_hotels",
+					"description": "Retrieve a list of available hotels",
+					"inputSchema": map[string]any{"type": "object"},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal tools/list response: %v", err)
+	}
+
+	stream := &mockExternalProcessorStream{
+		ctx: context.Background(),
+		requests: []*extprocv3.ProcessingRequest{
+			{
+				Request: &extprocv3.ProcessingRequest_ResponseBody{
+					ResponseBody: &extprocv3.HttpBody{Body: toolsListResponse},
+				},
+			},
+		},
+	}
+
+	if err := service.Process(stream); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(stream.responses) != 1 {
+		t.Fatalf("expected 1 response, got %d", len(stream.responses))
+	}
+
+	// Must be a ResponseBody allow — not an ImmediateResponse (which would mean
+	// the original body was replaced with incompatible guard_output).
+	resp, ok := stream.responses[0].Response.(*extprocv3.ProcessingResponse_ResponseBody)
+	if !ok {
+		t.Fatalf("expected ResponseBody (allow), got %T", stream.responses[0].Response)
+	}
+	if resp.ResponseBody.Response.BodyMutation != nil {
+		t.Error("body must not be mutated for tools/list transform — MCP envelope would be corrupted")
+	}
+}

@@ -274,6 +274,13 @@ func (s *CalloutService) processBody(ctx context.Context, body []byte, eventType
 
 	// Check for transformed content
 	if aidrResp.Result.Transformed && aidrResp.Result.GuardOutput != nil {
+		// tools/list responses cannot be safely transformed: guard_output is in
+		// chat-completions format and cannot be reinjected into the MCP JSON-RPC
+		// envelope. Allow through — the block path above still enforces policy.
+		if isMCPToolsListResponse(payload) {
+			s.logger.Info("AIDR transform skipped for tools/list response — MCP envelope cannot be reconstructed")
+			return s.allowResponse(isRequest), nil
+		}
 		s.logger.Info("request transformed by AIDR policy")
 		s.logger.Debug("transformed output", "has_guard_output", true)
 		resp, err := s.transformedResponse(aidrResp.Result.GuardOutput, isRequest)
@@ -367,6 +374,22 @@ func isMCPError(payload map[string]any) bool {
 	_, hasError := payload["error"]
 	_, hasMethod := payload["method"]
 	return hasJSONRPC && hasError && !hasMethod
+}
+
+// isMCPToolsListResponse returns true when the MCP response is a tools/list
+// result (result.tools[] present with no other scannable content fields).
+// Transforms must not be applied to these responses because guard_output is in
+// chat-completions format and cannot be safely reinjected into the MCP envelope.
+func isMCPToolsListResponse(payload map[string]any) bool {
+	result, ok := payload["result"].(map[string]any)
+	if !ok {
+		return false
+	}
+	_, hasTools := result["tools"]
+	_, hasContent := result["content"]
+	_, hasContents := result["contents"]
+	_, hasMessages := result["messages"]
+	return hasTools && !hasContent && !hasContents && !hasMessages
 }
 
 // extractMCPContent extracts scannable text from MCP JSON-RPC payloads and
