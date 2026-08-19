@@ -252,15 +252,11 @@ gcloud artifacts repositories create ${REPO_NAME} \
 ```bash
 
 # Configure Docker auth
-gcloud auth configure-docker \
-    us-central1-docker.pkg.dev
+gcloud auth configure-docker $REGION-docker.pkg.dev
 
 # Build Image
 docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/debugger:latest ./debugger
 
-```
-
-```bash
 # Push Image
 docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/debugger:latest
 
@@ -377,7 +373,7 @@ cat <<EOF > hotel_adk_agent_reg/.env
 GOOGLE_GENAI_USE_VERTEXAI=1
 GOOGLE_CLOUD_PROJECT=${PROJECT_ID}
 GOOGLE_CLOUD_LOCATION=${REGION}
-MCP_SERVER_NAME=${MCP_SERVER_NAME}
+MCP_SERVER_URL=${MCP_SERVER_URL}
 EOF
 
 ```
@@ -433,15 +429,28 @@ Screenshots below -
 
 You can check the Cloud Run logs for MCP requests (from local agent)
 
-#### Provide IAM Access Agent Registry to all agents
+#### Provide IAM Access Agent Registry to Vertex AI
 
-```bash
-# This is needed for the Agent to boot up in the Agent Runtime / Agent Engine 
-# when the Agent is using MCP from Agent Registry
+```shell
+export VERTEXAI_SERVICE_AGENT=$(gcloud projects get-iam-policy ${PROJECT_ID} \
+--flatten="bindings[].members" \
+--format="value(bindings.members)" \
+--filter="bindings.role:roles/aiplatform.serviceAgent" | head -1)
+
+echo $VERTEXAI_SERVICE_AGENT
+```
+Should look like: serviceAccount:service-<PROJECT_NUMBER>@gcp-sa-aiplatform.iam.gserviceaccount.com
+
+If that comes back empty, construct it directly:
+```shell
+export VERTEXAI_SERVICE_AGENT="serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-aiplatform.iam.gserviceaccount.com"
+```
+
+Then grant the permission:
+```shell
 gcloud projects add-iam-policy-binding ${PROJECT_ID} \
-    --member="${ALL_AGENTS}" \
-    --role="roles/agentregistry.viewer"
-
+--member="${VERTEXAI_SERVICE_AGENT}" \
+--role="roles/networkservices.viewer"
 ```
 
 #### Deploy in Agent Runtime (Agent Engine)
