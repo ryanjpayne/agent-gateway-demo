@@ -68,6 +68,7 @@ export REPO_NAME=${REGION}-repo
 export EXTENSION_NAME=cloudrun-extproc-extn
 export ALL_AGENTS=principalSet://agents.global.org-${ORG_ID}.system.id.goog/attribute.platformContainer/aiplatform/projects/${PROJECT_NUMBER}
 export AGENT_GATEWAY_NAME=${REGION}-gw
+export AUTHZ_POLICY_NAME=agent-gateway-authz
 export PWD=`pwd`  
 
 ```
@@ -166,7 +167,7 @@ Note down the Service URL which looks like https://hotel-booker-mcp-xxxxxx-uc.a.
 ```bash
 
 export MCP_SERVER_HOST=<URL without https e.g. hotel-booker-mcp-xxxxxx-xx.a.run.app>
-
+export MCP_SERVER_URL="https://${MCP_SERVER_HOST}/mcp"
 
 ```
 
